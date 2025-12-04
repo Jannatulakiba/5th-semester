@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TCP Chat Server</title>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        .header h2 { margin: 0; font-size: 28px; }
+        .header small { opacity: 0.9; }
+        .status {
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .info {
+            padding: 10px;
+            background: #e7f3ff;
+            color: #004085;
+            text-align: center;
+            font-size: 13px;
+        }
+        .chat-box {
+            height: 420px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .chat-box::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+        .message {
+            margin: 12px 0;
+            padding: 12px 16px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.sent {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .message.received {
+            background: white;
+            color: #333;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 2px solid #e0e0e0;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        #messageInput {
+            flex: 1;
+            padding: 14px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        #messageInput:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        #sendBtn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        #sendBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        #sendBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .instruction {
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            margin: 15px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .instruction strong { color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🖥️ TCP Chat Server</h2>
+            <small>Connection-oriented Socket Communication</small>
+        </div>
+        
+        <div class="status" id="status">
+            ⏳ Initializing server...
+        </div>
+        
+        <div 
+        
+        <div class="info">
+            ℹ️ Wait for reply before sending next message
+        </div>
+        
+        <div class="chat-box" id="chatBox"></div>
+        
+        <div class="input-area">
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let waitingForReply = false;
+        let isServer = true;
+        let pollInterval;
+
+        function init() {
+            // Register as server
+            fetch('http://127.0.0.1:5555/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({role: 'server'})
+            })
+            .then(r => r.json())
+            .then(data => {
+                updateStatus('⏳ Waiting for client to connect...');
+                startPolling();
+            })
+            .catch(err => {
+                updateStatus('❌ Cannot connect to backend! Run: python tcp_backend.py');
+            });
+        }
+
+        function startPolling() {
+            pollInterval = setInterval(() => {
+                fetch('http://127.0.0.1:5555/poll?role=server')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status) {
+                            if (data.status.includes('connected')) {
+                                updateStatus('🟢 Client connected - Ready to chat', true);
+                                document.getElementById('messageInput').disabled = false;
+                                document.getElementById('sendBtn').disabled = false;
+                            } else {
+                                updateStatus(data.status);
+                            }
+                        }
+                        
+                        if (data.messages && data.messages.length > 0) {
+                            data.messages.forEach(msg => {
+                                addMessage(msg.text, msg.type);
+                                if (msg.type === 'received') {
+                                    waitingForReply = false;
+                                    document.getElementById('messageInput').disabled = false;
+                                    document.getElementById('sendBtn').disabled = false;
+                                }
+                            });
+                        }
+                    })
+                    .catch(err => console.log('Poll error'));
+            }, 200);
+        }
+
+        function updateStatus(text, connected = false) {
+            const status = document.getElementById('status');
+            status.textContent = text;
+            status.className = connected ? 'status connected' : 'status';
+        }
+
+        function addMessage(text, type) {
+            const chatBox = document.getElementById('chatBox');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + type;
+            
+            const time = new Date().toLocaleTimeString();
+            msgDiv.innerHTML = text + '<div class="message-time">' + time + '</div>';
+            
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendMessage() {
+            if (waitingForReply) return;
+            
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                fetch('http://127.0.0.1:5555/send', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({role: 'server', message: message})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        addMessage(message, 'sent');
+                        input.value = '';
+                        waitingForReply = true;
+                        input.disabled = true;
+                        document.getElementById('sendBtn').disabled = true;
+                    }
+                });
+            }
+        }
+
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !waitingForReply) {
+                sendMessage();
+            }
+        });
+
+        // Initialize when page loads
+        window.onload = init;
+    </script>
+</body>
+</html>

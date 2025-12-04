@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title> Bangladesh Crop Recommendation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="chatbox">
+        <h2> Bangladesh Crop Recommendation </h2>
+
+        <div id="chat-log"></div>
+
+        <div id="input-area">
+            <!-- Sliders -->
+            <label>N (Nitrogen): <span id="N-val">50</span></label>
+            <input type="range" id="N" min="0" max="150" value="50" oninput="updateValue('N')">
+
+            <label>P (Phosphorus): <span id="P-val">50</span></label>
+            <input type="range" id="P" min="0" max="150" value="50" oninput="updateValue('P')">
+
+            <label>K (Potassium): <span id="K-val">50</span></label>
+            <input type="range" id="K" min="0" max="150" value="50" oninput="updateValue('K')">
+
+            <label>Temperature (°C): <span id="temperature-val">25</span></label>
+            <input type="range" id="temperature" min="10" max="40" value="25" oninput="updateValue('temperature')">
+
+            <label>Humidity (%): <span id="humidity-val">60</span></label>
+            <input type="range" id="humidity" min="0" max="100" value="60" oninput="updateValue('humidity')">
+
+            <label>Soil pH: <span id="ph-val">6.5</span></label>
+            <input type="range" id="ph" min="4" max="9" step="0.1" value="6.5" oninput="updateValue('ph')">
+
+            <label>Rainfall (mm): <span id="rainfall-val">150</span></label>
+            <input type="range" id="rainfall" min="0" max="300" value="150" oninput="updateValue('rainfall')">
+
+            <!-- Dropdowns -->
+            <label>Soil Type:</label>
+            <select id="soil_type">
+                <option value="sandy">Sandy</option>
+                <option value="loamy">Loamy</option>
+                <option value="clay">Clay</option>
+                <option value="silty">Silty</option>
+            </select>
+
+            <label>Season:</label>
+            <select id="season">
+                <option value="summer">Summer</option>
+                <option value="winter">Winter</option>
+                <option value="monsoon">Monsoon</option>
+            </select>
+
+            <label>Previous Crop:</label>
+            <select id="previous_crop">
+                <option value="none">None</option>
+                <option value="rice">Rice</option>
+                <option value="maize">Maize</option>
+                <option value="wheat">Wheat</option>
+            </select>
+
+            <label>Altitude (m): <span id="altitude-val">50</span></label>
+            <input type="range" id="altitude" min="0" max="2000" value="50" oninput="updateValue('altitude')">
+
+            <label>Sunlight (hours/day): <span id="sunlight-val">6</span></label>
+            <input type="range" id="sunlight" min="0" max="12" value="6" oninput="updateValue('sunlight')">
+
+            <button onclick="predictCrop()">Predict</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

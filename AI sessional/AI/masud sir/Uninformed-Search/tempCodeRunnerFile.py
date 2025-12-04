@@ -1,0 +1,1 @@
+LS(child,goal,path,level+1,maxD):

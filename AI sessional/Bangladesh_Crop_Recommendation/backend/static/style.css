@@ -1,0 +1,78 @@
+/* Body */
+body { 
+    font-family: Arial, sans-serif; 
+    background: #eef2f3; 
+    margin: 0; 
+    padding: 0; 
+}
+
+/* Chatbox container */
+.chatbox { 
+    width: 600px; 
+    margin: 40px auto; 
+    background: #ffffff; 
+    padding: 20px 25px; 
+    border-radius: 12px; 
+    box-shadow: 0 6px 12px #ffffff;
+}
+
+/* Chat log */
+#chat-log { 
+    height: 300px; 
+    overflow-y: auto; 
+    border: 1px solid #d4d4d4; 
+    padding: 12px; 
+    margin-bottom: 18px; 
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+/* Bot message */
+.bot { 
+    background: #d6ffd0; 
+    padding: 10px; 
+    margin: 6px 0; 
+    border-radius: 6px; 
+    border-left: 4px solid #4CAF50;
+}
+
+/* User message */
+.user { 
+    background: #e0e7ff; 
+    padding: 10px; 
+    margin: 6px 0; 
+    border-radius: 6px; 
+    border-left: 4px solid #3f51b5;
+}
+
+/* Input labels */
+#input-area label { 
+    display: block; 
+    margin: 12px 0 4px; 
+    font-weight: 600;
+}
+
+/* Sliders */
+#input-area input[type="range"] { 
+    width: 100%; 
+    cursor: pointer;
+    accent-color: #4CAF50;
+}
+
+/* Predict button */
+#input-area button { 
+    width: 100%;
+    padding: 12px; 
+    margin-top: 15px; 
+    background: #4CAF50; 
+    color: white; 
+    border: none; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    font-size: 16px;
+    font-weight: 600;
+}
+
+#input-area button:hover { 
+    background: #3e9443; 
+}

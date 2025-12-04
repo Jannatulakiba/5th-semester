@@ -1,0 +1,567 @@
+"""
+UDP Chat Client - ULTRA MODERN UI
+Save as: udp_client_modern.py
+"""
+
+from flask import Flask, render_template_string, request, jsonify
+from flask_cors import CORS
+import socket
+import threading
+import queue
+
+app = Flask(__name__)
+CORS(app)
+
+SERVER_HOST = '127.0.0.1'
+SERVER_PORT = 6000
+MAX_MESSAGE_SIZE = 1000
+
+message_queue = queue.Queue()
+udp_socket = None
+client_port = None
+
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UDP Client | Modern Chat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #06b6d4;
+            --accent: #8b5cf6;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .background-animation {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        .circle:nth-child(1) { width: 80px; height: 80px; top: 10%; left: 20%; animation-delay: 0s; }
+        .circle:nth-child(2) { width: 60px; height: 60px; top: 60%; left: 80%; animation-delay: 3s; }
+        .circle:nth-child(3) { width: 100px; height: 100px; top: 40%; left: 10%; animation-delay: 6s; }
+        .circle:nth-child(4) { width: 70px; height: 70px; top: 80%; left: 60%; animation-delay: 9s; }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 10px,
+                rgba(255,255,255,0.05) 10px,
+                rgba(255,255,255,0.05) 20px
+            );
+            animation: slideReverse 20s linear infinite;
+        }
+        
+        @keyframes slideReverse {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-50px, -50px); }
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .header-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 16px;
+            border-radius: 20px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-bar {
+            background: linear-gradient(to right, #6366f1, #8b5cf6);
+            padding: 16px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            gap: 12px;
+        }
+        
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        .info-banner {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            padding: 12px 30px;
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .chat-container {
+            height: 500px;
+            overflow-y: auto;
+            padding: 30px;
+            background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+            position: relative;
+        }
+        
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .chat-container::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            border-radius: 4px;
+        }
+        
+        .message-wrapper {
+            margin-bottom: 20px;
+            animation: messageIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        @keyframes messageIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .message {
+            max-width: 70%;
+            padding: 16px 20px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word;
+        }
+        
+        .message.sent {
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        .message.received {
+            background: white;
+            color: #1e293b;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+        
+        .input-area {
+            padding: 24px 30px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .char-counter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #64748b;
+        }
+        
+        .char-count {
+            font-weight: 600;
+        }
+        
+        .char-count.warning {
+            color: #ef4444;
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        input {
+            flex: 1;
+            padding: 16px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background: #f8fafc;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #10b981;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+        
+        button {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-animation">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="header-content">
+                    <h1>💬 UDP Client</h1>
+                    <div class="header-badge">Connectionless Socket • Port <span id="portDisplay">...</span></div>
+                </div>
+            </div>
+            
+            <div class="status-bar">
+                <div class="status-icon"></div>
+                <span>Connected to Server</span>
+            </div>
+            
+            <div class="info-banner">
+                📡 UDP Mode: Fast, connectionless • Max 1000 characters
+            </div>
+            
+            <div class="chat-container" id="chat">
+                <div class="empty-state">
+                    <div class="empty-state-icon">✨</div>
+                    <div>Start the conversation!</div>
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <div class="char-counter">
+                    <span>Type your message</span>
+                    <span class="char-count" id="charCount">0 / 1000</span>
+                </div>
+                <div class="input-wrapper">
+                    <input id="input" placeholder="Type a message..." maxlength="1000">
+                    <button id="btn" onclick="send()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let canSend = true;
+        let messageCount = 0;
+
+        // Get client port
+        fetch('/port').then(r => r.json()).then(data => {
+            document.getElementById('portDisplay').textContent = data.port || '...';
+        });
+
+        setInterval(() => {
+            fetch('/poll').then(r => r.json()).then(data => {
+                if (data.messages) {
+                    data.messages.forEach(m => {
+                        addMsg(m.text, m.type);
+                        if (m.type === 'received') {
+                            canSend = true;
+                            document.getElementById('input').disabled = false;
+                            document.getElementById('btn').disabled = false;
+                        }
+                    });
+                }
+            });
+        }, 100);
+
+        function addMsg(text, type) {
+            const chat = document.getElementById('chat');
+            
+            if (messageCount === 0) {
+                chat.innerHTML = '';
+            }
+            messageCount++;
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper';
+            wrapper.style.textAlign = type === 'sent' ? 'right' : 'left';
+            
+            const msg = document.createElement('div');
+            msg.className = 'message ' + type;
+            
+            const time = new Date().toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            msg.innerHTML = text + '<div class="message-time">' + time + '</div>';
+            
+            wrapper.appendChild(msg);
+            chat.appendChild(wrapper);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function send() {
+            if (!canSend) return;
+            
+            const input = document.getElementById('input');
+            const text = input.value.trim();
+            
+            if (text) {
+                if (text.length > 1000) {
+                    alert('Message too long! Maximum 1000 characters.');
+                    return;
+                }
+                
+                fetch('/send', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({msg: text})
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        addMsg(text, 'sent');
+                        input.value = '';
+                        updateCount();
+                        canSend = false;
+                        input.disabled = true;
+                        document.getElementById('btn').disabled = true;
+                    }
+                });
+            }
+        }
+
+        function updateCount() {
+            const input = document.getElementById('input');
+            const count = document.getElementById('charCount');
+            const len = input.value.length;
+            count.textContent = len + ' / 1000';
+            count.className = len > 900 ? 'char-count warning' : 'char-count';
+        }
+
+        document.getElementById('input').addEventListener('input', updateCount);
+        document.getElementById('input').addEventListener('keypress', e => {
+            if (e.key === 'Enter' && canSend) send();
+        });
+    </script>
+</body>
+</html>
+"""
+
+@app.route('/')
+def index():
+    return render_template_string(HTML)
+
+@app.route('/port')
+def get_port():
+    return jsonify({'port': client_port})
+
+@app.route('/poll')
+def poll():
+    messages = []
+    while not message_queue.empty():
+        try:
+            messages.append(message_queue.get_nowait())
+        except:
+            break
+    return jsonify({'messages': messages})
+
+@app.route('/send', methods=['POST'])
+def send():
+    global udp_socket
+    
+    data = request.json
+    message = data['msg']
+    
+    if len(message) > MAX_MESSAGE_SIZE:
+        return jsonify({'success': False, 'error': 'Too long'})
+    
+    try:
+        udp_socket.sendto(message.encode('utf-8'), (SERVER_HOST, SERVER_PORT))
+        print(f"📤 Sent: {message}")
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+def udp_listener():
+    global udp_socket, client_port
+    
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_socket.bind(('127.0.0.1', 0))
+    
+    client_port = udp_socket.getsockname()[1]
+    print(f"✅ UDP Client on port {client_port}")
+    
+    while True:
+        try:
+            data, addr = udp_socket.recvfrom(MAX_MESSAGE_SIZE + 100)
+            message = data.decode('utf-8')
+            print(f"📨 Received: {message}")
+            message_queue.put({'text': message, 'type': 'received'})
+        except Exception as e:
+            print(f"Error: {e}")
+
+if __name__ == '__main__':
+    print("\n" + "="*60)
+    print("🚀 UDP CLIENT - ULTRA MODERN UI")
+    print("="*60)
+    
+    threading.Thread(target=udp_listener, daemon=True).start()
+    
+    import time
+    time.sleep(0.3)
+    
+    print("🌐 Open: http://127.0.0.1:8083")
+    print("="*60 + "\n")
+    
+    app.run(host='127.0.0.1', port=8083, debug=False, threaded=True)
