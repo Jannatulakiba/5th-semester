@@ -1,0 +1,48 @@
+.MODEL SMALL
+.STACK 64
+.DATA
+COUNTER DB 100
+COUNTER2 DB 4
+
+.CODE
+MAIN PROC
+    MOV AX, @DATA
+    MOV DS, AX
+    
+    CALL INBINARY
+    MOV AX, BX
+   
+BEGIN:  MOV D, 4 
+
+L10:    POP AX
+        CALL RANDOM
+        CALL OUTBIN
+        PUSH AX
+        
+        MOV AH, 2
+        MOV DL, 20H
+        INT 21H
+         DEC COUNTER2
+        CMP COUNTER2, 0
+          JE NEW_LINE
+          DEC COUNTER
+          CMP COUNTER, 0
+          JNE L10
+          
+ JMP OUT_
+ 
+ NEW_LINE:  MOV AH, 2
+            MOV DL, 0AH
+            INT 21H
+            JMP BEGIN
+
+OUT_:
+MOV AH, 4CH
+INT 21H 
+MAIN ENDP
+
+INCLUDE C:\TEST\RANDOM.ASM
+INCLUDE C:\TEST\INBINARY.ASM 
+INCLUDE C:\TEST\OUTBIN.ASM
+ 
+END MAIN

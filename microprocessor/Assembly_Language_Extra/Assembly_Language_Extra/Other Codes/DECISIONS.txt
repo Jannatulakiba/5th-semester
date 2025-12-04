@@ -1,0 +1,21 @@
+1. Using less instructions: add can take 1 variable, so don't need to use MOV
+
+2. Using instruction with less bytes: MOV takes 5-byte machine code but XCHG takes 6,so use MOV rather than XCHG when need.
+
+3. Implementing with memory variables
+
+4. A basic rule in assembly language programming is that if you can use a register, don’t use a variable. The register operation is much faster than that of memory
+
+5. Using atomic instructionslike XCHG
+
+6. An x86 processor stores and retrieves data from memory using little-endian order (low to high). The least significant byte is stored at the first memory address allocated for the data. The remaining bytes are stored in the next consecutive memory positions.
+
+7. Since you and the system share the same stack, you should be very careful without disturbing the system use. If you forget to make PUSH and POP in pair, an error could happen, especially in a conditional jump when the procedure returns.
+
+8. if you can do something at assembling time, don’t do it at runtime. Implementing with plus (+) instead of ADD
+
+9. Making your loop more efficient with a jump
+
+10. MASM provides the 32-bit INVOKE directive to make a procedure call easier. For the CALL instruction, you only can use registers as argument/parameter pair in calling interface
+
+11. MASM provides another confused directive LOCAL, that is ambiguous depending on the context, where to use with exactly the same reserved word

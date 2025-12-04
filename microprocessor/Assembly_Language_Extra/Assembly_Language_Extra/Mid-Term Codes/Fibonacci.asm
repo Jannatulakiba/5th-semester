@@ -1,0 +1,27 @@
+.MODEL SMALL
+.STACK 100H
+.DATA
+ANS DW ?
+.CODE
+MAIN PROC
+   MOV AX,@DATA
+   MOV DS,AX
+    
+    MOV BX,0
+    MOV DX,1
+    MOV CX,7
+    
+    L:
+    ADD BX,DX
+    MOV AX,BX
+    MOV BX,DX
+    MOV DX,AX
+    LOOP L
+    SUB DX,1
+    MOV ANS,DX
+    
+    
+    MOV AH,4CH
+    INT 21H
+    MAIN ENDP
+END MAIN

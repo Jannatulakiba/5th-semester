@@ -1,0 +1,6 @@
+
+MOV AX,1234H
+MOV BX,5678H    
+XCHG AX,BX 
+
+HLT
